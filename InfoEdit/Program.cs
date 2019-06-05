@@ -175,7 +175,18 @@ namespace InfoEdit
 #if DEBUG
                 outFileName += ".test.xml";
 #endif
-                xmldoc.Save(outFileName);
+                var xmlsetting = new XmlWriterSettings()
+                {
+                    Async = false,
+                    CheckCharacters = true,
+                    CloseOutput = true,
+                    Encoding = new System.Text.UTF8Encoding(false),
+                    Indent = true,
+                    IndentChars = "\t",
+                    NewLineChars = "\n",
+                };
+                var writer = XmlWriter.Create(outFileName, xmlsetting);
+                xmldoc.Save(writer);
             });
         }
     }
