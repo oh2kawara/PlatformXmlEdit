@@ -1,30 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml;
-using CommandLine;
+using Common;
 
 namespace InfoEdit
 {
     class Program
     {
-        #region コマンドラインオプション
-
-        public class Option
-        {
-            [Value(0, MetaName = "info plist", HelpText = "Info.plistファイルを指定してください", Required = true)]
-            public string InfoPlist { get; set; }
-
-            [Option('n', "name", HelpText = "CFBundleDisplayName")]
-            public string Name { get; set; }
-            [Option('i', "identifier", HelpText = "CFBundleIdentifier")]
-            public string Identifier { get; set; }
-
-            [Option("minOsVersion", HelpText = "MinimumOSVersion")]
-            public string MinOSVer { get; set; }
-        }
-
-        #endregion
-
         #region DictMap
 
         public class DictMap
@@ -141,53 +123,40 @@ namespace InfoEdit
 
         static void Main(string[] args)
         {
-            Parser.Default.ParseArguments<Option>(args).WithParsed<Option>((opt) => {
-                var xmldoc = new XmlDocument();
-                xmldoc.Load(opt.InfoPlist);
+            var opt = new OptionXml(args);
+            var dict = opt.PlatformXml.SelectSingleNode("/plist/dict");
+            if (null == dict)
+            {
+                throw new Exception("Info.plistの形式が正しくありません");
+            }
+            var dictMap = new DictMap(dict);
 
-                var dict = xmldoc.SelectSingleNode("/plist/dict");
-                if (null == dict)
-                {
-                    throw new Exception("Info.plistの形式が正しくありません");
-                }
-                var dictMap = new DictMap(dict);
+            XmlNode node;
 
-                // CFBundleDisplayName
-                if (opt.Name != null)
-                {
-                    dictMap.SetStringValue("CFBundleDisplayName", opt.Name);
-                }
+            // CFBundleDisplayName
+            node = opt.SettingXml.SelectSingleNode("config/CFBundleDisplayName");
+            if (node != null)
+            {
+                dictMap.SetStringValue("CFBundleDisplayName", node.InnerText);
+            }
 
-                // CFBundleIdentifier
-                if (opt.Identifier != null)
-                {
-                    dictMap.SetStringValue("CFBundleIdentifier", opt.Identifier);
-                }
+            // CFBundleIdentifier
+            node = opt.SettingXml.SelectSingleNode("config/CFBundleIdentifier");
+            if (node != null)
+            {
+                dictMap.SetStringValue("CFBundleIdentifier", node.InnerText);
+            }
 
-                // MinimumOSVersion
-                if (opt.MinOSVer != null)
-                {
-                    dictMap.SetStringValue("MinimumOSVersion", opt.MinOSVer);
-                }
+            // MinimumOSVersion
+            node = opt.SettingXml.SelectSingleNode("config/MinimumOSVersion");
+            if (node != null)
+            {
+                dictMap.SetStringValue("MinimumOSVersion", node.InnerText);
+            }
 
-                dictMap.save();
-                var outFileName = opt.InfoPlist;
-#if DEBUG
-                outFileName += ".test.xml";
-#endif
-                var xmlsetting = new XmlWriterSettings()
-                {
-                    Async = false,
-                    CheckCharacters = true,
-                    CloseOutput = true,
-                    Encoding = new System.Text.UTF8Encoding(false),
-                    Indent = true,
-                    IndentChars = "\t",
-                    NewLineChars = "\n",
-                };
-                var writer = XmlWriter.Create(outFileName, xmlsetting);
-                xmldoc.Save(writer);
-            });
+            dictMap.save();
+
+            opt.WriteXml();
         }
     }
 }
